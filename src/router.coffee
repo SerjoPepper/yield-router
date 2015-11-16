@@ -6,15 +6,16 @@ wrap = (handler) ->
   nextFn = undefined
 
   executeHandler = (args...) ->
-    promise.coroutine ->
-      yield handler.apply(null, args)
-    .then (nextArg) ->
+    p = promise.coroutine( ->
+      yield promise.resolve handler.apply(null, args)
+    )()
+    p.then (nextArg) ->
       switch nextArg
         when 'route'
           nextFn('route')
         when 'next'
           nextFn()
-    .catch (err) ->
+    p.catch (err) ->
       nextFn(err)
 
   wrapNext = (next) ->

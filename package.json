@@ -1,6 +1,6 @@
 {
   "name": "yield-router",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Router for express.js which supports yield and promises",
   "main": "lib/router.js",
   "scripts": {
