@@ -5,9 +5,9 @@ ExpressRouter = require('express').Router
 wrap = (handler) ->
   nextFn = undefined
 
-  executeHandler = (arguments) ->
+  executeHandler = (args...) ->
     promise.coroutine ->
-      yield handler.apply(null, arguments)
+      yield handler.apply(null, args)
     .then (nextArg) ->
       switch nextArg
         when 'route'
@@ -30,7 +30,7 @@ wrap = (handler) ->
 
 
 YieldRouter = (path) ->
-  router = new ExpressRouter()
+  router = new ExpressRouter(path)
   for method in methods.concat(['use', 'all', 'params'])
     do (method) ->
       original = router[method]
