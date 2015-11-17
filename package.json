@@ -1,6 +1,6 @@
 {
   "name": "yield-router",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Router for express.js which supports yield and promises",
   "main": "lib/router.js",
   "scripts": {
@@ -29,6 +29,7 @@
   "dependencies": {
     "bluebird": "^3.0.5",
     "co": "^4.6.0",
+    "lodash": "^3.10.1",
     "methods": "^1.1.1"
   },
   "devDependencies": {

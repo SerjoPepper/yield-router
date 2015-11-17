@@ -1,56 +1,76 @@
-methods = require 'methods'
-co = require 'co'
-promise = require 'bluebird'
-ExpressRouter = require('express').Router
+Router = require('express').Router
+Promise = require('bluebird')
+_ = require('lodash')
+co = require('co')
+
+isPromise = (obj) ->
+  obj and 'object' == typeof obj and obj.then != undefined
 
 isGenerator = (fn) ->
-  'function' is typeof fn.next && 'function' is typeof fn.throw;
+  fn and 'function' == typeof fn.next and 'function' == typeof fn['throw']
 
-wrap = (handler) ->
-  nextFn = undefined
+wrapHandler = (handler) ->
 
-  executeHandler = (args...) ->
-    co ->
-      if isGenerator(handler)
-        yield handler.apply(null, args)
-      else
-        promise.resolve handler.apply(null, args)
-    .then(
-      (nextArg) ->
-        switch nextArg
-          when 'route'
-            nextFn('route')
-          when 'next'
-            nextFn()
-      (err) ->
-        nextFn(err)
-    )
+  handleReturn = (args) ->
+    next = args.slice(-1)[0]
+    ret = handler.apply(null, args)
+    _promise = undefined
+    if isPromise(ret)
+      _promise = ret
+    else if isGenerator(ret)
+      _promise = co.wrap(handler).apply(null, args)
+    if _promise
+      _promise.then ((d) ->
+        if d == 'next'
+          next()
+        else if d == 'route'
+          next 'route'
+        return
+      ), (err) ->
+        if !err
+          err = new Error('returned promise was rejected but did not have a reason')
+        next err
+        return
+    return
 
-  wrapNext = (next) ->
-    nextFn = next
+  if handler.length == 4
+    return (err, req, res, next) ->
+      handleReturn [
+        err
+        req
+        res
+        next
+      ]
+      return
 
-  switch handler.length
-    when 4
-      (err, req, res, next) ->
-        executeHandler(err, req, res, wrapNext(next))
-    else
-      (req, res, next) ->
-        executeHandler(req, res, wrapNext(next))
+  (req, res, next) ->
+    handleReturn [
+      req
+      res
+      next
+    ]
+    return
 
+PromiseRouter = (path) ->
+  me = new Router(path)
+  methods = require('methods').concat([
+    'use'
+    'all'
+    'param'
+  ])
+  _.each methods, (method) ->
+    original = '__' + method
+    me[original] = me[method]
 
-YieldRouter = (path) ->
-  router = new ExpressRouter(path)
-  for method in methods.concat(['use', 'all', 'param'])
-    do (method) ->
-      original = router[method]
-      router[method] = (args...) ->
-        args = args.map (arg, i) ->
-          if typeof arg is 'function'
-            wrap(arg)
-          else
-            arg
+    me[method] = ->
+      args = _.flattenDeep(arguments).map((arg, idx) ->
+        if idx == 0 and 'string' == typeof arg or arg instanceof RegExp
+          return arg
+        wrapHandler arg
+      )
+      me[original].apply this, args
 
-        original.apply(router, args)
-  router
+    return
+  me
 
-module.exports = YieldRouter
+module.exports = PromiseRouter
