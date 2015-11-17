@@ -1,14 +1,20 @@
 methods = require 'methods'
 co = require 'co'
+promise = require 'bluebird'
 ExpressRouter = require('express').Router
 
+isGenerator = (fn) ->
+  'function' is typeof fn.next && 'function' is typeof fn.throw;
 
 wrap = (handler) ->
   nextFn = undefined
 
   executeHandler = (args...) ->
     co ->
-      yield handler.apply(null, args)
+      if isGenerator(handler)
+        yield handler.apply(null, args)
+      else
+        promise.resolve handler.apply(null, args)
     .then(
       (nextArg) ->
         switch nextArg
@@ -34,7 +40,7 @@ wrap = (handler) ->
 
 YieldRouter = (path) ->
   router = new ExpressRouter(path)
-  for method in methods.concat(['use', 'all', 'params'])
+  for method in methods.concat(['use', 'all', 'param'])
     do (method) ->
       original = router[method]
       router[method] = (args...) ->
