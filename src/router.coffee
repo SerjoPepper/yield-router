@@ -1,4 +1,3 @@
-promise = require 'bluebird'
 methods = require 'methods'
 co = require 'co'
 ExpressRouter = require('express').Router
@@ -8,16 +7,18 @@ wrap = (handler) ->
   nextFn = undefined
 
   executeHandler = (args...) ->
-    p = co ->
+    co ->
       yield handler.apply(null, args)
-    p.then (nextArg) ->
-      switch nextArg
-        when 'route'
-          nextFn('route')
-        when 'next'
-          nextFn()
-    p.catch (err) ->
-      nextFn(err)
+    .then(
+      (nextArg) ->
+        switch nextArg
+          when 'route'
+            nextFn('route')
+          when 'next'
+            nextFn()
+      (err) ->
+        nextFn(err)
+    )
 
   wrapNext = (next) ->
     nextFn = next
