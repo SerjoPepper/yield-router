@@ -1,14 +1,15 @@
 promise = require 'bluebird'
 methods = require 'methods'
+co = require 'co'
 ExpressRouter = require('express').Router
+
 
 wrap = (handler) ->
   nextFn = undefined
 
   executeHandler = (args...) ->
-    p = promise.coroutine( ->
-      yield promise.resolve handler.apply(null, args)
-    )()
+    p = co ->
+      yield handler.apply(null, args)
     p.then (nextArg) ->
       switch nextArg
         when 'route'
